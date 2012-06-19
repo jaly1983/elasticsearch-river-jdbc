@@ -54,7 +54,7 @@ public class SQLService {
             throws ClassNotFoundException, SQLException {
         Class.forName(driverClassName);
         Connection connection = DriverManager.getConnection(jdbcURL, username, password);
-        connection.setReadOnly(true);
+        //connection.setReadOnly(true);
         connection.setAutoCommit(false);
         return connection;
     }
@@ -67,7 +67,7 @@ public class SQLService {
      * @throws SQLException 
      */
     public PreparedStatement prepareStatement(Connection connection, String sql) throws SQLException {
-        return connection.prepareStatement(sql, ResultSet.TYPE_FORWARD_ONLY, ResultSet.CONCUR_READ_ONLY);
+        return connection.prepareStatement(sql, ResultSet.TYPE_FORWARD_ONLY, ResultSet.CONCUR_UPDATABLE);
     }
 
     /**
@@ -95,7 +95,9 @@ public class SQLService {
     public ResultSet execute(PreparedStatement statement, int fetchSize) throws SQLException {
         statement.setMaxRows(0);
         statement.setFetchSize(fetchSize);
-        return statement.executeQuery();
+        statement.execute();
+        return statement.getResultSet();
+//        return statement.executeQuery();
     }
 
     /**
@@ -165,7 +167,12 @@ public class SQLService {
                     Blob blob = result.getBlob(i);
                     String value = Base64.encodeBytes(blob.getBytes(0L, (int) blob.length()));
                     values.add(value);
+                } else if (metadata.getColumnType(i) == Types.BIT) {
+                    values.add(result.getBoolean(i));
+                } else if (metadata.getColumnType(i) == Types.NCHAR) {
+                    values.add(result.getNString(i));
                 } else {
+                	System.err.println("column type : " + metadata.getColumnType(i));
                     values.add(result.getObject(name).toString());
                 }
             }
@@ -202,6 +209,7 @@ public class SQLService {
      * @throws SQLException 
      */
     public void close(Connection connection) throws SQLException {
+    	connection.commit();
         connection.close();
     }
 
